@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 
 # 🔴 PASTE YOUR SECOND BOT TOKEN HERE
-BOT_TOKEN = "PASTE_SECOND_BOT_TOKEN_HERE"
+BOT_TOKEN = "8551777477:AAH6fQv6APhQ3DFyhx5LpUaB__IA21LIS14"
 
 logging.basicConfig(level=logging.INFO)
 
