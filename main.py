@@ -30,11 +30,11 @@ def format_items(items, limit=5):
 # ==========================
 
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(str(update.effective_chat.id))
 
     text = update.message.text.strip()
+    chat_id = update.effective_chat.id
 
-    # If message is structured STORE payload from Bot 1
+    # STORE messages coming from group
     if text.startswith("STORE||"):
         parts = text.split("||")
         if len(parts) == 3:
@@ -55,7 +55,11 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    # Normal query handling
+    # Ignore normal group chatter
+    if chat_id < 0:
+        return
+
+    # Private queries
     query = text.lower()
     items = load_items()
 
@@ -83,6 +87,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update.message.reply_text(format_items(results))
+
 
 
 # ==========================
