@@ -44,7 +44,9 @@ def format_items(items, limit=5):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.message.text.lower().strip()
     data = load_data()
-    recent = filter_last_days(data, 14)
+    recent = filter_last_days(data, 30)
+if not recent:
+    recent = data
 
     if query == "latest":
         results = sorted(recent, key=lambda x: x["relevance_score"], reverse=True)
