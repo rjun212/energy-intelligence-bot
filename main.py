@@ -39,8 +39,6 @@ def format_items(items, limit=5):
 # ==========================
 
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("CHAT TYPE:", update.effective_chat.type)
-    print("TEXT:", update.message.text)
 
     text = update.message.text.strip()
     chat_type = update.effective_chat.type
@@ -50,40 +48,36 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ==========================
 
     if text.startswith("STORE||"):
-    try:
-        # Split only first two delimiters
-        _, title, url = text.split("||", 2)
+        try:
+            # Split only first two delimiters
+            _, title, url = text.split("||", 2)
 
-        # Remove newlines from long Telegram URLs
-        url = url.replace("\n", "").strip()
+            # Clean Telegram line breaks
+            url = url.replace("\n", "").strip()
 
-        items = load_items()
+            items = load_items()
 
-        new_item = {
-            "title": title.strip(),
-            "url": url
-        }
+            new_item = {
+                "title": title.strip(),
+                "url": url
+            }
 
-        items.insert(0, new_item)
-        save_items(items)
+            items.insert(0, new_item)
+            save_items(items)
 
-        print("STORE SAVED:", title)
+            print("STORE SAVED:", title)
 
-    except Exception as e:
-        print("STORE ERROR:", e)
+        except Exception as e:
+            print("STORE ERROR:", e)
 
-    return
+        return
 
-
-    # ==========================
-    # Ignore group chatter
-    # ==========================
-
+    # Ignore normal group chatter
     if chat_type != "private":
         return
 
     # ==========================
-    # Private chat queries
+    # Private queries
     # ==========================
 
     query = text.lower()
