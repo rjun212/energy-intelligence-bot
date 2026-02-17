@@ -39,74 +39,10 @@ def format_items(items, limit=5):
 # ==========================
 
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    text = update.message.text.strip()
-    chat_type = update.effective_chat.type
-
-    # ==========================
-    # STORE messages from group
-    # ==========================
-
-    if text.startswith("STORE||"):
-        try:
-            # Split only first two delimiters
-            _, title, url = text.split("||", 2)
-
-            # Clean Telegram line breaks
-            url = url.replace("\n", "").strip()
-
-            items = load_items()
-
-            new_item = {
-                "title": title.strip(),
-                "url": url
-            }
-
-            items.insert(0, new_item)
-            save_items(items)
-
-            print("STORE SAVED:", title)
-
-        except Exception as e:
-            print("STORE ERROR:", e)
-
-        return
-
-    # Ignore normal group chatter
-    if chat_type != "private":
-        return
-
-    # ==========================
-    # Private queries
-    # ==========================
-
-    query = text.lower()
-    items = load_items()
-
-    if query == "latest":
-        results = items
-
-    elif query == "india":
-        results = [x for x in items if "india" in x["title"].lower()]
-
-    elif query == "solar":
-        results = [x for x in items if "solar" in x["title"].lower()]
-
-    elif query == "battery":
-        results = [x for x in items if "battery" in x["title"].lower()]
-
-    elif query == "flexibility":
-        results = [
-            x for x in items
-            if "flexibility" in x["title"].lower()
-            or "demand response" in x["title"].lower()
-        ]
-
-    else:
-        await update.message.reply_text("Try: latest, india, solar, battery, flexibility")
-        return
-
-    await update.message.reply_text(format_items(results))
+    print("----- MESSAGE RECEIVED -----")
+    print("CHAT TYPE:", update.effective_chat.type)
+    print("TEXT:", repr(update.message.text))
+    print("----------------------------")
 
 # ==========================
 # Main
