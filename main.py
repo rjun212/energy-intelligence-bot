@@ -17,7 +17,7 @@ def load_data():
     with open(DATA_FILE, "r") as f:
         return json.load(f)
 
-def filter_last_days(data, days=7):
+def filter_last_days(data, days=30):
     cutoff = datetime.utcnow() - timedelta(days=days)
     results = []
     for item in data:
@@ -42,11 +42,13 @@ def format_items(items, limit=5):
 # ==========================
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     query = update.message.text.lower().strip()
     data = load_data()
+
     recent = filter_last_days(data, 30)
-if not recent:
-    recent = data
+    if not recent:
+        recent = data
 
     if query == "latest":
         results = sorted(recent, key=lambda x: x["relevance_score"], reverse=True)
@@ -85,9 +87,7 @@ if not recent:
 
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
     print("Energy Intelligence Bot running...")
     app.run_polling()
 
