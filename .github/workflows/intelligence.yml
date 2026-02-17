@@ -1,0 +1,39 @@
+name: Energy Intelligence Ingestion
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # daily at 3 AM UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-intelligence:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run batch collector
+        run: python batch_run.py
+
+      - name: Process intelligence
+        run: python intelligence_processor.py
+
+      - name: Commit updated data
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/
+          git commit -m "Update intelligence data" || echo "No changes"
+          git push
