@@ -7,19 +7,28 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATA_FILE = "data/master_index.json"
 
 # ==========================
-# Load Data
+# Utilities
 # ==========================
 
 def load_items():
     if not os.path.exists(DATA_FILE):
         return []
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        payload = json.load(f)
-    return payload.get("items", [])
+
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+            return payload.get("items", [])
+    except:
+        return []
+
+def save_items(items):
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump({"items": items}, f, indent=2)
 
 def format_items(items, limit=5):
     if not items:
         return "No items found."
+
     text = ""
     for it in items[:limit]:
         text += f"• {it['title']}\n"
@@ -32,9 +41,12 @@ def format_items(items, limit=5):
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text.strip()
-    chat_id = update.effective_chat.id
+    chat_type = update.effective_chat.type
 
-    # STORE messages coming from group
+    # ==========================
+    # STORE messages from group
+    # ==========================
+
     if text.startswith("STORE||"):
         parts = text.split("||")
         if len(parts) == 3:
@@ -49,17 +61,21 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }
 
             items.insert(0, new_item)
-
-            with open(DATA_FILE, "w", encoding="utf-8") as f:
-                json.dump({"items": items}, f, indent=2)
+            save_items(items)
 
         return
 
-    # Ignore normal group chatter
-    if chat_id < 0:
+    # ==========================
+    # Ignore group chatter
+    # ==========================
+
+    if chat_type != "private":
         return
 
-    # Private queries
+    # ==========================
+    # Private chat queries
+    # ==========================
+
     query = text.lower()
     items = load_items()
 
@@ -87,8 +103,6 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update.message.reply_text(format_items(results))
-
-
 
 # ==========================
 # Main
