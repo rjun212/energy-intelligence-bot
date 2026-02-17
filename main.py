@@ -39,6 +39,8 @@ def format_items(items, limit=5):
 # ==========================
 
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("CHAT TYPE:", update.effective_chat.type)
+    print("TEXT:", update.message.text)
 
     text = update.message.text.strip()
     chat_type = update.effective_chat.type
