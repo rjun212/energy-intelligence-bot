@@ -1,6 +1,5 @@
 import json
 import os
-from datetime import datetime, timedelta
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 
@@ -8,78 +7,60 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATA_FILE = "data/master_index.json"
 
 # ==========================
-# Utility
+# Load Data
 # ==========================
 
-def load_data():
+def load_items():
     if not os.path.exists(DATA_FILE):
         return []
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
-
-def filter_last_days(data, days=30):
-    cutoff = datetime.utcnow() - timedelta(days=days)
-    results = []
-    for item in data:
-        try:
-            item_date = datetime.strptime(item["date_detected"], "%Y-%m-%d")
-            if item_date >= cutoff:
-                results.append(item)
-        except:
-            continue
-    return results
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+    return payload.get("items", [])
 
 def format_items(items, limit=5):
     if not items:
         return "No items found."
     text = ""
-    for item in items[:limit]:
-        text += f"• {item['title']}\n"
+    for it in items[:limit]:
+        text += f"• {it['title']}\n"
     return text
 
 # ==========================
-# Message Handler
+# Telegram Handler
 # ==========================
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.message.text.lower().strip()
-    data = load_data()
+    items = load_items()
 
-    recent = filter_last_days(data, 30)
-    if not recent:
-        recent = data
+    if not items:
+        await update.message.reply_text("Database empty.")
+        return
 
     if query == "latest":
-        results = sorted(recent, key=lambda x: x["relevance_score"], reverse=True)
+        results = items
 
     elif query == "india":
-        results = [x for x in recent if x["geography"] == "India"]
-        results = sorted(results, key=lambda x: x["relevance_score"], reverse=True)
+        results = [x for x in items if "india" in x["title"].lower()]
 
     elif query == "solar":
-        results = [x for x in recent if "solar" in x.get("themes", []) or "renewables" in x.get("themes", [])]
-        results = sorted(results, key=lambda x: x["relevance_score"], reverse=True)
+        results = [x for x in items if "solar" in x["title"].lower()]
 
     elif query == "battery":
-        results = [x for x in recent if "battery storage" in x.get("themes", [])]
-        results = sorted(results, key=lambda x: x["relevance_score"], reverse=True)
+        results = [x for x in items if "battery" in x["title"].lower()]
 
     elif query == "flexibility":
         results = [
-            x for x in recent
-            if "grid flexibility" in x.get("themes", [])
-            or "demand flexibility" in x.get("themes", [])
-            or "demand response" in x.get("themes", [])
+            x for x in items
+            if "flexibility" in x["title"].lower()
+            or "demand response" in x["title"].lower()
         ]
-        results = sorted(results, key=lambda x: x["relevance_score"], reverse=True)
 
     else:
         await update.message.reply_text("Try: latest, india, solar, battery, flexibility")
         return
 
-    response = format_items(results)
-    await update.message.reply_text(response)
+    await update.message.reply_text(format_items(results))
 
 # ==========================
 # Main
@@ -87,7 +68,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
     print("Energy Intelligence Bot running...")
     app.run_polling()
 
