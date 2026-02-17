@@ -1,105 +1,92 @@
-import logging
-import sqlite3
-import re
-from datetime import datetime
+import json
+import os
+from datetime import datetime, timedelta
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 
-# 🔴 PASTE YOUR SECOND BOT TOKEN HERE
-BOT_TOKEN = "8551777477:AAH6fQv6APhQ3DFyhx5LpUaB__IA21LIS14"
-
-logging.basicConfig(level=logging.INFO)
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+DATA_FILE = "data/master_index.json"
 
 # ==========================
-# DATABASE
+# Utility
 # ==========================
 
-conn = sqlite3.connect("intelligence.db")
-cursor = conn.cursor()
+def load_data():
+    if not os.path.exists(DATA_FILE):
+        return []
+    with open(DATA_FILE, "r") as f:
+        return json.load(f)
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    url TEXT UNIQUE,
-    title TEXT,
-    topic TEXT,
-    timestamp TEXT
-)
-""")
-conn.commit()
+def filter_last_days(data, days=7):
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    results = []
+    for item in data:
+        try:
+            item_date = datetime.strptime(item["date_detected"], "%Y-%m-%d")
+            if item_date >= cutoff:
+                results.append(item)
+        except:
+            continue
+    return results
 
-# ==========================
-# SIMPLE TOPIC CLASSIFIER
-# ==========================
-
-def classify_topic(text):
-    text = text.lower()
-
-    if "nuclear" in text:
-        return "nuclear"
-    if "battery" in text or "storage" in text:
-        return "storage"
-    if "renewable" in text or "solar" in text or "wind" in text:
-        return "renewables"
-    if "suryaghar" in text:
-        return "suryaghar"
-    if "energy stack" in text:
-        return "energy_stack"
-
-    return "general"
+def format_items(items, limit=5):
+    if not items:
+        return "No items found."
+    text = ""
+    for item in items[:limit]:
+        text += f"• {item['title']}\n"
+    return text
 
 # ==========================
-# HANDLER
+# Message Handler
 # ==========================
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text or ""
+    query = update.message.text.lower().strip()
+    data = load_data()
+    recent = filter_last_days(data, 14)
 
-    urls = re.findall(r'(https?://\S+)', text)
+    if query == "latest":
+        results = sorted(recent, key=lambda x: x["relevance_score"], reverse=True)
 
-    if not urls:
-        await update.message.reply_text(
-            "Send or forward a message containing a link to save it."
-        )
-        return
+    elif query == "india":
+        results = [x for x in recent if x["geography"] == "India"]
+        results = sorted(results, key=lambda x: x["relevance_score"], reverse=True)
 
-    link = urls[0]
+    elif query == "solar":
+        results = [x for x in recent if "solar" in x.get("themes", []) or "renewables" in x.get("themes", [])]
+        results = sorted(results, key=lambda x: x["relevance_score"], reverse=True)
 
-    # Dedup check
-    cursor.execute("SELECT 1 FROM items WHERE url=?", (link,))
-    if cursor.fetchone():
-        await update.message.reply_text("Already saved.")
-        return
+    elif query == "battery":
+        results = [x for x in recent if "battery storage" in x.get("themes", [])]
+        results = sorted(results, key=lambda x: x["relevance_score"], reverse=True)
 
-    words = text.lower().split()
+    elif query == "flexibility":
+        results = [
+            x for x in recent
+            if "grid flexibility" in x.get("themes", [])
+            or "demand flexibility" in x.get("themes", [])
+            or "demand response" in x.get("themes", [])
+        ]
+        results = sorted(results, key=lambda x: x["relevance_score"], reverse=True)
 
-    if words and words[0] == "save" and len(words) > 1:
-        topic = words[1]
     else:
-        topic = classify_topic(text)
+        await update.message.reply_text("Try: latest, india, solar, battery, flexibility")
+        return
 
-    title = text[:200]
-
-    cursor.execute(
-        "INSERT INTO items (url, title, topic, timestamp) VALUES (?, ?, ?, ?)",
-        (link, title, topic, datetime.utcnow().isoformat())
-    )
-    conn.commit()
-
-    await update.message.reply_text(f"Saved under topic: {topic}")
+    response = format_items(results)
+    await update.message.reply_text(response)
 
 # ==========================
-# MAIN
+# Main
 # ==========================
 
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    app.add_handler(
-        MessageHandler(filters.ALL, handle_message)
-    )
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    print("Intelligence bot running...")
+    print("Energy Intelligence Bot running...")
     app.run_polling()
 
 if __name__ == "__main__":
