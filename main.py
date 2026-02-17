@@ -50,22 +50,30 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ==========================
 
     if text.startswith("STORE||"):
-        parts = text.split("||")
-        if len(parts) == 3:
-            title = parts[1]
-            url = parts[2]
+    try:
+        # Split only first two delimiters
+        _, title, url = text.split("||", 2)
 
-            items = load_items()
+        # Remove newlines from long Telegram URLs
+        url = url.replace("\n", "").strip()
 
-            new_item = {
-                "title": title,
-                "url": url
-            }
+        items = load_items()
 
-            items.insert(0, new_item)
-            save_items(items)
+        new_item = {
+            "title": title.strip(),
+            "url": url
+        }
 
-        return
+        items.insert(0, new_item)
+        save_items(items)
+
+        print("STORE SAVED:", title)
+
+    except Exception as e:
+        print("STORE ERROR:", e)
+
+    return
+
 
     # ==========================
     # Ignore group chatter
