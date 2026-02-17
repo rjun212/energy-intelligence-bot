@@ -30,13 +30,33 @@ def format_items(items, limit=5):
 # ==========================
 
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(str(update.effective_chat.id))
-    query = update.message.text.lower().strip()
-    items = load_items()
 
-    if not items:
-        await update.message.reply_text("Database empty.")
+    text = update.message.text.strip()
+
+    # If message is structured STORE payload from Bot 1
+    if text.startswith("STORE||"):
+        parts = text.split("||")
+        if len(parts) == 3:
+            title = parts[1]
+            url = parts[2]
+
+            items = load_items()
+
+            new_item = {
+                "title": title,
+                "url": url
+            }
+
+            items.insert(0, new_item)
+
+            with open(DATA_FILE, "w", encoding="utf-8") as f:
+                json.dump({"items": items}, f, indent=2)
+
         return
+
+    # Normal query handling
+    query = text.lower()
+    items = load_items()
 
     if query == "latest":
         results = items
@@ -62,6 +82,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update.message.reply_text(format_items(results))
+
 
 # ==========================
 # Main
