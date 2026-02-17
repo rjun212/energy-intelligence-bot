@@ -30,6 +30,7 @@ def format_items(items, limit=5):
 # ==========================
 
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(str(update.effective_chat.id))
     query = update.message.text.lower().strip()
     items = load_items()
 
